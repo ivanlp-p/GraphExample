@@ -23,20 +23,20 @@ public class SmoothLineChart extends View {
     private static final int STROKE_SIZE = 2;
     private static final float SMOOTHNESS = 0.3f; // the higher the smoother, but don't go over 0.5
 
-    private final Paint mPaint;
-    private final Path mPath;
+    private final Paint paint;
+    private final Path path;
     private final Path fillPath;
-    private final float mCircleSize;
-    private final float mStrokeSize;
-    private final float mBorder;
+    private final float circleSize;
+    private final float strokeSize;
+    private final float border;
 
     private List<PointF> firstRefPoints = new ArrayList<>();
     private List<PointF> secondRefPoints = new ArrayList<>();
 
-    private PointF[] maxValue;
-    private PointF[] minValue;
-    private float mMinY;
-    private float mMaxY;
+    private PointF[] maxLine;
+    private PointF[] minLine;
+    private float minY;
+    private float maxY;
 
 
     public SmoothLineChart(Context context) {
@@ -52,40 +52,26 @@ public class SmoothLineChart extends View {
 
         float scale = context.getResources().getDisplayMetrics().density;
 
-        mCircleSize = scale * CIRCLE_SIZE;
-        mStrokeSize = scale * STROKE_SIZE;
-        mBorder = mCircleSize;
+        circleSize = scale * CIRCLE_SIZE;
+        strokeSize = scale * STROKE_SIZE;
+        border = circleSize;
 
-        mPaint = new Paint();
-        mPaint.setAntiAlias(true);
-        mPaint.setStrokeWidth(mStrokeSize);
+        paint = new Paint();
+        paint.setAntiAlias(true);
+        paint.setStrokeWidth(strokeSize);
 
-        mPath = new Path();
+        path = new Path();
         fillPath = new Path();
     }
 
-    public void setCurvesForFillArea(PointF[] minValue, PointF[] maxValue) {
-        this.minValue = minValue;
-        this.maxValue = maxValue;
+    public void setCurvesForFillArea(PointF[] minLine, PointF[] maxLine) {
+        this.minLine = minLine;
+        this.maxLine = maxLine;
 
-        if (minValue != null && maxValue != null) {
-            mMaxY = maxValue[0].y;
+        if (minLine != null && maxLine != null) {
 
-            for (PointF point : maxValue) {
-                final float y = point.y;
-
-                if (y > mMaxY)
-                    mMaxY = y;
-            }
-
-            mMinY = minValue[0].y;
-
-            for (PointF point : minValue) {
-                final float y = point.y;
-
-                if (y < mMinY)
-                    mMinY = y;
-            }
+            maxY = getMaxY(maxLine);
+            minY = getMinY(minLine);
         }
 
         invalidate();
@@ -94,37 +80,15 @@ public class SmoothLineChart extends View {
     public void draw(Canvas canvas) {
         super.draw(canvas);
 
-        int minSize = minValue.length;
-        int maxSize = maxValue.length;
+        path.reset();
 
-        final float height = getMeasuredHeight() - 2 * mBorder;
-        final float width = getMeasuredWidth() - 2 * mBorder;
-
-        final float left = minValue[0].x;
-        final float right = minValue[minValue.length - 1].x;
-        final float dX = (right - left) > 0 ? (right - left) : (2);
-        final float dY = (mMaxY - mMinY) > 0 ? (mMaxY - mMinY) : (2);
-
-        mPath.reset();
-
-        List<PointF> minPoints = new ArrayList<PointF>(minSize);
-        for (PointF point : minValue) {
-            float x = mBorder + (point.x - left) * width / dX;
-            float y = mBorder + height - (point.y - mMinY) * height / dY;
-            minPoints.add(new PointF(x, y));
-        }
-
-        List<PointF> maxPoints = new ArrayList<PointF>(maxSize);
-        for (PointF point : maxValue) {
-            float x = mBorder + (point.x - left) * width / dX;
-            float y = mBorder + height - (point.y - mMinY) * height / dY;
-            maxPoints.add(new PointF(x, y));
-        }
+        List<PointF> minPoints = getAbsolutePointsList(minLine, border, minY, maxY);
+        List<PointF> maxPoints = getAbsolutePointsList(maxLine, border, minY, maxY);
 
         float maxX = 0, maxY = 0;
-        mPath.moveTo(maxPoints.get(0).x, maxPoints.get(0).y);
+        path.moveTo(maxPoints.get(0).x, maxPoints.get(0).y);
         fillPath.moveTo(maxPoints.get(0).x, maxPoints.get(0).y);
-        for (int i = 1; i < minSize; i++) {
+        for (int i = 1; i < minPoints.size(); i++) {
             PointF p = maxPoints.get(i);    // current point
 
             // first control point
@@ -134,7 +98,7 @@ public class SmoothLineChart extends View {
             float y1 = p0.y + maxY * d0;
 
             // second control point
-            PointF p1 = maxPoints.get(i + 1 < minSize ? i + 1 : i);    // next point
+            PointF p1 = maxPoints.get(i + 1 < minPoints.size() ? i + 1 : i);    // next point
             float d1 = (float) Math.sqrt(Math.pow(p1.x - p0.x, 2) + Math.pow(p1.y - p0.y, 2));    // distance between p1 and p0 (length of reference line)
             maxX = (p1.x - p0.x) / d1 * SMOOTHNESS;        // (lX,lY) is the slope of the reference line
             maxY = (p1.y - p0.y) / d1 * SMOOTHNESS;
@@ -142,20 +106,20 @@ public class SmoothLineChart extends View {
             float y2 = p.y - maxY * d0;
 
             // add line
-            mPath.cubicTo(x1, y1, x2, y2, p.x, p.y);
+            path.cubicTo(x1, y1, x2, y2, p.x, p.y);
             fillPath.cubicTo(x1, y1, x2, y2, p.x, p.y);
         }
 
         PointF lastMinPoint = minPoints.get(minPoints.size() - 1);
         fillPath.lineTo(lastMinPoint.x, lastMinPoint.y);
 
-        mPaint.setColor(Color.RED);
-        mPaint.setStyle(Paint.Style.STROKE);
-        canvas.drawPath(mPath, mPaint);
+        paint.setColor(Color.RED);
+        paint.setStyle(Paint.Style.STROKE);
+        canvas.drawPath(path, paint);
 
         float minX = 0, minY = 0;
-        mPath.moveTo(minPoints.get(0).x, minPoints.get(0).y);
-        for (int i = 1; i < minSize; i++) {
+        path.moveTo(minPoints.get(0).x, minPoints.get(0).y);
+        for (int i = 1; i < minPoints.size(); i++) {
             PointF p = minPoints.get(i);    // current point
 
             // first control point
@@ -166,7 +130,7 @@ public class SmoothLineChart extends View {
             firstRefPoints.add(new PointF(x1, y1));
 
             // second control point
-            PointF p1 = minPoints.get(i + 1 < minSize ? i + 1 : i);    // next point
+            PointF p1 = minPoints.get(i + 1 < minPoints.size() ? i + 1 : i);    // next point
             float d1 = (float) Math.sqrt(Math.pow(p1.x - p0.x, 2) + Math.pow(p1.y - p0.y, 2));    // distance between p1 and p0 (length of reference line)
             minX = (p1.x - p0.x) / d1 * SMOOTHNESS;        // (lX,lY) is the slope of the reference line
             minY = (p1.y - p0.y) / d1 * SMOOTHNESS;
@@ -175,12 +139,12 @@ public class SmoothLineChart extends View {
             secondRefPoints.add(new PointF(x2, y2));
 
             // add line
-            mPath.cubicTo(x1, y1, x2, y2, p.x, p.y);
+            path.cubicTo(x1, y1, x2, y2, p.x, p.y);
         }
 
-        mPaint.setColor(Color.RED);
-        mPaint.setStyle(Paint.Style.STROKE);
-        canvas.drawPath(mPath, mPaint);
+        paint.setColor(Color.RED);
+        paint.setStyle(Paint.Style.STROKE);
+        canvas.drawPath(path, paint);
 
         for (int i = minPoints.size() - 2; i >= 0; i--) {
             PointF p = minPoints.get(i);    // current point
@@ -194,32 +158,97 @@ public class SmoothLineChart extends View {
 
         fillPath.lineTo(firstMaxPoint.x, firstMaxPoint.y);
 
-        mPaint.setStyle(Paint.Style.FILL);
-        mPaint.setColor(Color.BLUE);
-        canvas.drawPath(fillPath, mPaint);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(Color.BLUE);
+        canvas.drawPath(fillPath, paint);
 
         // draw circles
-        mPaint.setColor(CHART_COLOR);
-        mPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        paint.setColor(CHART_COLOR);
+        paint.setStyle(Paint.Style.FILL_AND_STROKE);
         for (PointF point : maxPoints) {
-            canvas.drawCircle(point.x, point.y, mCircleSize / 2, mPaint);
+            canvas.drawCircle(point.x, point.y, circleSize / 2, paint);
         }
-        mPaint.setStyle(Paint.Style.FILL);
-        mPaint.setColor(Color.WHITE);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(Color.WHITE);
         for (PointF point : maxPoints) {
-            canvas.drawCircle(point.x, point.y, (mCircleSize - mStrokeSize) / 2, mPaint);
+            canvas.drawCircle(point.x, point.y, (circleSize - strokeSize) / 2, paint);
         }
 
-        mPaint.setColor(CHART_COLOR);
-        mPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        paint.setColor(CHART_COLOR);
+        paint.setStyle(Paint.Style.FILL_AND_STROKE);
         for (PointF point : minPoints) {
-            canvas.drawCircle(point.x, point.y, mCircleSize / 2, mPaint);
+            canvas.drawCircle(point.x, point.y, circleSize / 2, paint);
         }
-        mPaint.setStyle(Paint.Style.FILL);
-        mPaint.setColor(Color.WHITE);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(Color.WHITE);
         for (PointF point : minPoints) {
-            canvas.drawCircle(point.x, point.y, (mCircleSize - mStrokeSize) / 2, mPaint);
+            canvas.drawCircle(point.x, point.y, (circleSize - strokeSize) / 2, paint);
         }
 
+    }
+
+    /**
+     * Метод высчитывает абсолюбтные координаты точек на экране
+     *
+     * @param line
+     * @param border
+     * @param minY
+     * @param maxY
+     * @return
+     */
+    private List<PointF> getAbsolutePointsList(PointF[] line, float border, float minY, float maxY) {
+
+        final float height = getMeasuredHeight() - 2 * border;
+        final float width = getMeasuredWidth() - 2 * border;
+
+        final float left = line[0].x;
+        final float right = line[line.length - 1].x;
+        final float dX = (right - left) > 0 ? (right - left) : (2);
+        final float dY = (maxY - minY) > 0 ? (maxY - minY) : (2);
+
+        List<PointF> pointsList = new ArrayList<>();
+        for (PointF point : line) {
+            float x = border + (point.x - left) * width / dX;
+            float y = border + height - (point.y - minY) * height / dY;
+            pointsList.add(new PointF(x, y));
+        }
+
+        return pointsList;
+    }
+
+    /**
+     * Метод для поиска максимального значения по Y в массиве PointF
+     *
+     * @param points массив PointF
+     * @return максимальное значение по Y
+     */
+    private static float getMaxY(PointF[] points) {
+
+        float maxY = Float.MIN_VALUE;
+
+        for (PointF point : points) {
+
+            if (point.y > maxY) {
+
+                maxY = point.y;
+            }
+        }
+
+        return maxY;
+    }
+
+    private static float getMinY(PointF[] points) {
+
+        float minY = Float.MAX_VALUE;
+
+        for (PointF point : points) {
+
+            if (point.y < minY) {
+
+                minY = point.y;
+            }
+        }
+
+        return minY;
     }
 }
