@@ -88,7 +88,7 @@ public class SmoothLineChart extends View {
         float maxX = 0, maxY = 0;
         path.moveTo(maxPoints.get(0).x, maxPoints.get(0).y);
         fillPath.moveTo(maxPoints.get(0).x, maxPoints.get(0).y);
-        for (int i = 1; i < minPoints.size(); i++) {
+        for (int i = 1; i < maxPoints.size(); i++) {
             PointF p = maxPoints.get(i);    // current point
 
             // first control point
@@ -98,7 +98,7 @@ public class SmoothLineChart extends View {
             float y1 = p0.y + maxY * d0;
 
             // second control point
-            PointF p1 = maxPoints.get(i + 1 < minPoints.size() ? i + 1 : i);    // next point
+            PointF p1 = maxPoints.get(i + 1 < maxPoints.size() ? i + 1 : i);    // next point
             float d1 = (float) Math.sqrt(Math.pow(p1.x - p0.x, 2) + Math.pow(p1.y - p0.y, 2));    // distance between p1 and p0 (length of reference line)
             maxX = (p1.x - p0.x) / d1 * SMOOTHNESS;        // (lX,lY) is the slope of the reference line
             maxY = (p1.y - p0.y) / d1 * SMOOTHNESS;

@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
                 new PointF(20, 26),
                 new PointF(28, 14),
                 new PointF(37, 26),
-                new PointF(40, 30),
+
                 new PointF(50, 36),
                 new PointF(62, 29),
                 new PointF(80, 33)
