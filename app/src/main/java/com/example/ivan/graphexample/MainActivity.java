@@ -16,28 +16,30 @@ public class MainActivity extends AppCompatActivity {
         SmoothLineChart chart = (SmoothLineChart) findViewById(R.id.smoothChart);
 
         PointF[] minValue = new PointF[] {
-                new PointF(15, 39), // {x, y}
-                new PointF(20, 21),
-                new PointF(28, 9),
-                new PointF(37, 21),
-                new PointF(40, 25),
-                new PointF(50, 31),
-                new PointF(62, 24),
-                new PointF(80, 28)
+                new PointF(15, 30), // {x, y}
+                new PointF(20, 20),
+                new PointF(28, 10),
+                new PointF(37, 20),
+                new PointF(40, 30),
+                new PointF(50, 40),
+                new PointF(62, 20),
+                new PointF(80, 30)
         };
 
         PointF[] maxValue = new PointF[] {
-                new PointF(15, 44), // {x, y}
-                new PointF(20, 26),
-                new PointF(28, 14),
-                new PointF(37, 26),
-                new PointF(40, 30),
-                new PointF(50, 36),
-                new PointF(62, 29),
-                new PointF(80, 33)
+                new PointF(15, 40), // {x, y}
+                new PointF(20, 30),
+                new PointF(28, 20),
+                new PointF(37, 30),
+                new PointF(40, 40),
+                new PointF(50, 50),
+                new PointF(62, 30),
+                new PointF(80, 40)
         };
 
         chart.setCurvesForFillArea(minValue, maxValue);
+
+     //   LineChart lineChart = (LineChart) findViewById(R.id.linechart);
 
     }
 }

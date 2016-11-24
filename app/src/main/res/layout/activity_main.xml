@@ -8,13 +8,21 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="@dimen/margin"
+        android:paddingBottom="20dp"
+        android:background="@color/pink"
         android:orientation="vertical" >
+
 
         <com.example.ivan.graphexample.linechart.SmoothLineChart
             android:layout_width="match_parent"
-            android:layout_height="200dp"
+            android:layout_height="400dp"
             android:id="@+id/smoothChart"
             android:background="@android:color/white" />
+
+        <!--  <com.example.ivan.graphexample.linechart.LineChart
+                   android:layout_width="match_parent"
+                   android:layout_height="300dp"
+                   android:id="@+id/linechart"/>-->
 
 
     </LinearLayout>
