@@ -3,12 +3,15 @@ package com.example.ivan.graphexample.linechart;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
+import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 
 import com.example.ivan.graphexample.R;
@@ -33,7 +36,6 @@ public class SmoothLineChart extends View {
     private final float circleSize;
     private final float strokeSize;
     private final float border;
-    private final Matrix matrix;
 
     private List<PointF> maxPoints;
     private List<PointF> minPoints;
@@ -65,7 +67,6 @@ public class SmoothLineChart extends View {
         border = circleSize;
 
         paint = new Paint();
-        matrix = new Matrix();
         paint.setAntiAlias(true);
         paint.setStrokeWidth(strokeSize);
 
@@ -92,11 +93,11 @@ public class SmoothLineChart extends View {
                     maxXAxis = x;
             }
 
-        //    maxXAxis = maxXAxis - 30;
-            maxYAxis = maxYAxis + 5;
+                maxXAxis = maxXAxis + 30;
+            maxYAxis = maxYAxis + 30;
 
 
-          //  minY = minValue[0].y;
+            //  minY = minValue[0].y;
 
          /*   for (PointF point : minValue) {
                 final float y = point.y;
@@ -115,8 +116,10 @@ public class SmoothLineChart extends View {
         int minSize = minValue.length;
         int maxSize = maxValue.length;
 
-        final float height = getMeasuredHeight() - 2 * border;
-        final float width = getMeasuredWidth() - 2 * border - 40;
+        final float height = getMeasuredHeight() - 2 * border - getResources().getDimensionPixelSize(R.dimen.axisy_padding_0) - getResources().getDimensionPixelSize(R.dimen.axisy_padding_15);
+     //   final float height = getMeasuredHeight() - 2 * border;
+        final float width = getMeasuredWidth() - border - getResources().getDimensionPixelSize(R.dimen.axisx_padding_5) - getResources().getDimensionPixelSize(R.dimen.axisx_padding_10);
+     //   final float width = getMeasuredWidth() - 2 * border;
 
         final float left = 0;
         final float right = maxXAxis;
@@ -125,17 +128,22 @@ public class SmoothLineChart extends View {
 
         minPoints = new ArrayList<PointF>(minSize);
         for (PointF point : minValue) {
-            float x = border + (point.x - left) * width / dX;
-            float y = border + height - (point.y - minY) * height / dY;
+            //float x = border + (point.x - left) * width / dX;
+            float x = (point.x - left) * width / dX;
+          //  float y = border + height - (point.y - minY) * height / dY;
+            float y = height - (point.y - minY) * height / dY;
             minPoints.add(new PointF(x, y));
         }
 
         maxPoints = new ArrayList<PointF>(maxSize);
         for (PointF point : maxValue) {
-            float x = border + (point.x - left) * width / dX;
-            float y = border + height - (point.y - minY) * height / dY;
+         //   float x = border + (point.x - left) * width / dX;
+            float x = (point.x - left) * width / dX;
+         //   float y = border + height - (point.y - minY) * height / dY;
+            float y = height - (point.y - minY) * height / dY;
             maxPoints.add(new PointF(x, y));
         }
+
 
         drawBackground(canvas);
 
@@ -145,50 +153,28 @@ public class SmoothLineChart extends View {
         path.moveTo(maxPoints.get(0).x, maxPoints.get(0).y);
         fillPath.moveTo(maxPoints.get(0).x, maxPoints.get(0).y);
 
-        float currentMaxX = border + (maxXAxis - left) * width / dX;
+        //   float currentMaxX = border + (maxXAxis - left) * width / dX;
 
         for (int i = 1; i < maxSize; i++) {
             PointF p = maxPoints.get(i);    // current point
-            if (p.x < currentMaxX) {
-                // first control point
-                PointF p0 = maxPoints.get(i - 1);    // previous point
-                float d0 = (float) Math.sqrt(Math.pow(p.x - p0.x, 2) + Math.pow(p.y - p0.y, 2));    // distance between p and p0
-                float x1 = Math.min(p0.x + maxX * d0, (p0.x + p.x) / 2);    // min is used to avoid going too much right
-                float y1 = p0.y + maxY * d0;
 
-                // second control point
-                PointF p1 = maxPoints.get(i + 1 < minSize ? i + 1 : i);    // next point
-                float d1 = (float) Math.sqrt(Math.pow(p1.x - p0.x, 2) + Math.pow(p1.y - p0.y, 2));    // distance between p1 and p0 (length of reference line)
-                maxX = (p1.x - p0.x) / d1 * SMOOTHNESS;        // (lX,lY) is the slope of the reference line
-                maxY = (p1.y - p0.y) / d1 * SMOOTHNESS;
-                float x2 = Math.max(p.x - maxX * d0, (p0.x + p.x) / 2);    // max is used to avoid going too much left
-                float y2 = p.y - maxY * d0;
+            // first control point
+            PointF p0 = maxPoints.get(i - 1);    // previous point
+            float d0 = (float) Math.sqrt(Math.pow(p.x - p0.x, 2) + Math.pow(p.y - p0.y, 2));    // distance between p and p0
+            float x1 = Math.min(p0.x + maxX * d0, (p0.x + p.x) / 2);    // min is used to avoid going too much right
+            float y1 = p0.y + maxY * d0;
 
-                // add line
-                path.cubicTo(x1, y1, x2, y2, p.x, p.y);
-                fillPath.cubicTo(x1, y1, x2, y2, p.x, p.y);
-            } else {
-                float currentMaxY = p.y;
-                p = new PointF(currentMaxX, currentMaxY);
+            // second control point
+            PointF p1 = maxPoints.get(i + 1 < minSize ? i + 1 : i);    // next point
+            float d1 = (float) Math.sqrt(Math.pow(p1.x - p0.x, 2) + Math.pow(p1.y - p0.y, 2));    // distance between p1 and p0 (length of reference line)
+            maxX = (p1.x - p0.x) / d1 * SMOOTHNESS;        // (lX,lY) is the slope of the reference line
+            maxY = (p1.y - p0.y) / d1 * SMOOTHNESS;
+            float x2 = Math.max(p.x - maxX * d0, (p0.x + p.x) / 2);    // max is used to avoid going too much left
+            float y2 = p.y - maxY * d0;
 
-                // first control point
-                PointF p0 = maxPoints.get(i - 1);    // previous point
-                float d0 = (float) Math.sqrt(Math.pow(p.x - p0.x, 2) + Math.pow(p.y - p0.y, 2));    // distance between p and p0
-                float x1 = Math.min(p0.x + maxX * d0, (p0.x + p.x) / 2);    // min is used to avoid going too much right
-                float y1 = p0.y + maxY * d0;
-
-                // second control point
-                PointF p1 = maxPoints.get(i + 1 < minSize ? i + 1 : i);    // next point
-                float d1 = (float) Math.sqrt(Math.pow(p1.x - p0.x, 2) + Math.pow(p1.y - p0.y, 2));    // distance between p1 and p0 (length of reference line)
-                maxX = (p1.x - p0.x) / d1 * SMOOTHNESS;        // (lX,lY) is the slope of the reference line
-                maxY = (p1.y - p0.y) / d1 * SMOOTHNESS;
-                float x2 = Math.max(p.x - maxX * d0, (p0.x + p.x) / 2);    // max is used to avoid going too much left
-                float y2 = p.y - maxY * d0;
-
-                // add line
-                path.cubicTo(x1, y1, x2, y2, p.x, p.y);
-                fillPath.cubicTo(x1, y1, x2, y2, p.x, p.y);
-            }
+            // add line
+            path.cubicTo(x1, y1, x2, y2, p.x, p.y);
+            fillPath.cubicTo(x1, y1, x2, y2, p.x, p.y);
 
         }
 
@@ -273,53 +259,93 @@ public class SmoothLineChart extends View {
 
     private void drawBackground(Canvas canvas) {
         int range = 5;
+
+        float paddingXForText = getResources().getDimensionPixelSize(R.dimen.axisx_padding_5) + getPaddingLeft();
+        float paddingYForText = getResources().getDimensionPixelSize(R.dimen.axisy_padding_0);
+
+        float paddingXForChart = getResources().getDimensionPixelSize(R.dimen.axisx_padding_10) + getPaddingLeft();
+        float paddingYForChart = getResources().getDimensionPixelSize(R.dimen.axisy_padding_15);
+
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(getResources().getColor(R.color.pink));
+        Rect rect = new Rect();
+        rect.set(0, 0, (int) (paddingXForText + paddingXForChart), getHeight() - getResources().getDimensionPixelSize(R.dimen.background_axis_y_padding));
+        canvas.drawRect(rect, paint);
+
+
+        paint.setColor(Color.GRAY);
+        paint.setTextAlign(Paint.Align.CENTER);
+        paint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        DisplayMetrics dp = getContext().getResources().getDisplayMetrics();
+        float textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 15, dp);
+        paint.setTextSize(textSize);
+
+        float measureXPadding = getResources().getDimensionPixelSize(R.dimen.measure_axis_y_padding_x);
+        float measureYPadding = getResources().getDimensionPixelSize(R.dimen.measure_axis_y_padding_y);
+        canvas.drawText("см", measureXPadding, measureYPadding, paint);
+
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(Color.GRAY);
         paint.setTextAlign(Paint.Align.CENTER);
-        paint.setTextSize(40);
+
+        paint.setTextSize(getResources().getDimensionPixelSize(R.dimen.axis_value_text_size) / 2);
+
         paint.setStrokeWidth(2);
 
-        canvas.translate(20, 0);
+//        float paddingXForText = getResources().getDimensionPixelSize(R.dimen.axisx_padding_5) + getPaddingLeft();
+//        float paddingYForText = getResources().getDimensionPixelSize(R.dimen.axisy_padding_0);
+
+        canvas.save();
+
+        canvas.translate(paddingXForText, paddingYForText);
+
+
 
         for (int y = 5; y < maxYAxis; y += range) {
             final float yPos = getYPos(y, maxYAxis);
+            float textPadding = getResources().getDimensionPixelSize(R.dimen.text_padding_y);
 
             paint.setAntiAlias(true);
-            canvas.drawText(String.valueOf(y), getPaddingLeft(), yPos - 25, paint);
+            canvas.drawText(String.valueOf(y), getPaddingLeft(), yPos - textPadding, paint);
         }
 
-        paint.setTextAlign(Paint.Align.LEFT);
+        paint.setTextAlign(Paint.Align.RIGHT);
 
         for (int x = 0; x <= maxXAxis; x += range) {
             final float xPos = getXPos(x, maxXAxis);
+            float textPadding = getResources().getDimensionPixelSize(R.dimen.text_padding_x);
 
             paint.setAntiAlias(true);
-            canvas.drawText(String.valueOf((int) (maxXAxis - x)), xPos + 20, getHeight(), paint);
+            canvas.drawText(String.valueOf((int) (maxXAxis - x)), xPos + textPadding, getHeight(), paint);
         }
 
-        canvas.translate(30, -35);
+
+
+        canvas.translate(paddingXForChart, paddingYForChart);
 
         Log.d("happy", "width = " + getWidth() + "h = " + getHeight());
         for (int y = 0; y < maxYAxis; y += range) {
             final float yPos = getYPos(y, maxYAxis);
-            final float xPos = getXPos(5, maxXAxis);
+            final float xPos = getXPos(0, maxXAxis);
             paint.setAntiAlias(false);
             canvas.drawLine(0, yPos, xPos, yPos, paint);
         }
 
-        for (int x = 5; x <= maxXAxis; x += range) {
+        for (int x = 0; x <= maxXAxis; x += range) {
             final float xPos = getXPos(x, maxXAxis);
+            final float yPos = getYPos(maxYAxis - range, maxYAxis);
 
             paint.setAntiAlias(false);
-            canvas.drawLine(xPos, 90, xPos, getHeight(), paint);
-
-
+            canvas.drawLine(xPos, yPos, xPos, getHeight(), paint);
         }
     }
 
     private float getXPos(float value, float maxValue) {
 
-        float width = getWidth() - getPaddingLeft() - getPaddingRight();
+        float width = getWidth() - getPaddingLeft() - getPaddingRight()
+                - getResources().getDimensionPixelSize(R.dimen.axisx_padding_5)
+                - getResources().getDimensionPixelSize(R.dimen.axisx_padding_10)
+                - border;
 
         value = (value / maxValue) * width;
         value = width - value;
