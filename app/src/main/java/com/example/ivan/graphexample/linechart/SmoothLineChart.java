@@ -5,9 +5,14 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.PathMeasure;
 import android.graphics.PointF;
 import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.Region;
 import android.graphics.Typeface;
+import android.graphics.drawable.ShapeDrawable;
+import android.graphics.drawable.shapes.PathShape;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -144,14 +149,17 @@ public class SmoothLineChart extends View {
             maxPoints.add(new PointF(x, y));
         }
 
-
         drawBackground(canvas);
 
+        fillPath.reset();
         path.reset();
 
-        float maxX = 0, maxY = 0;
+//        fillPath.moveTo(maxPoints.get(0).x, maxPoints.get(0).y);
+
+        /*
+          float maxX = 0, maxY = 0;
+
         path.moveTo(maxPoints.get(0).x, maxPoints.get(0).y);
-        fillPath.moveTo(maxPoints.get(0).x, maxPoints.get(0).y);
 
         //   float currentMaxX = border + (maxXAxis - left) * width / dX;
 
@@ -177,13 +185,15 @@ public class SmoothLineChart extends View {
             fillPath.cubicTo(x1, y1, x2, y2, p.x, p.y);
 
         }
-
+        */
+//        path.addPath(maxPath);
+//        fillPath.addPath(maxPath);
+/*
         PointF lastMinPoint = minPoints.get(minPoints.size() - 1);
         fillPath.lineTo(lastMinPoint.x, lastMinPoint.y);
+*/
 
-        paint.setColor(Color.RED);
-        paint.setStyle(Paint.Style.STROKE);
-        canvas.drawPath(path, paint);
+/*
 
         float minX = 0, minY = 0;
         path.moveTo(minPoints.get(0).x, minPoints.get(0).y);
@@ -195,6 +205,7 @@ public class SmoothLineChart extends View {
             float d0 = (float) Math.sqrt(Math.pow(p.x - p0.x, 2) + Math.pow(p.y - p0.y, 2));    // distance between p and p0
             float x1 = Math.min(p0.x + minX * d0, (p0.x + p.x) / 2);    // min is used to avoid going too much right
             float y1 = p0.y + minY * d0;
+
             firstRefPoints.add(new PointF(x1, y1));
 
             // second control point
@@ -209,11 +220,14 @@ public class SmoothLineChart extends View {
             // add line
             path.cubicTo(x1, y1, x2, y2, p.x, p.y);
         }
+*/
 
-        paint.setColor(Color.RED);
-        paint.setStyle(Paint.Style.STROKE);
-        canvas.drawPath(path, paint);
 
+//        path.addPath(minPath);
+//        fillPath.addPath(minPath);
+
+
+/*
         for (int i = minPoints.size() - 2; i >= 0; i--) {
             PointF p = minPoints.get(i);    // current point
             PointF firstRefPoint = firstRefPoints.get(i);
@@ -222,12 +236,45 @@ public class SmoothLineChart extends View {
             // add fill
             fillPath.cubicTo(secondRefPoint.x, secondRefPoint.y, firstRefPoint.x, firstRefPoint.y, p.x, p.y);
         }
-        PointF firstMaxPoint = maxPoints.get(0);
+        */
 
-        fillPath.lineTo(firstMaxPoint.x, firstMaxPoint.y);
+        paint.setColor(Color.RED);
+        paint.setStyle(Paint.Style.STROKE);
 
-        paint.setStyle(Paint.Style.FILL);
+        Path minPath = drawLine(minPoints);
+        fillPath.addPath(minPath);
+
+        canvas.drawPath(minPath, paint);
+
+        Path maxPath = drawLine(maxPoints);
+
+        List<PointF> minPathPointsList = getPoints(minPath);
+
+        PointF firstMinPathPoint = minPoints.get(0); //minPathPointsList.get(0);
+        PointF lastMinPathPoint = minPoints.get(minPoints.size() - 1); //minPathPointsList.get(minPathPointsList.size() - 1);
+
+        List<PointF> maxPathPointsList = getPoints(maxPath);
+
+        PointF firstMaxPathPoint = maxPoints.get(0); //maxPathPointsList.get(0);
+        PointF lastMaxPathPoint = maxPoints.get(maxPoints.size() - 1); //maxPathPointsList.get(maxPathPointsList.size() - 1);
+
+        maxPath.moveTo(lastMaxPathPoint.x, lastMaxPathPoint.y);
+        maxPath.lineTo(lastMinPathPoint.x, lastMinPathPoint.y);
+
+        maxPath.moveTo(firstMaxPathPoint.x, firstMaxPathPoint.y);
+        maxPath.lineTo(firstMinPathPoint.x, firstMinPathPoint.y);
+
+
+        fillPath.addPath(maxPath);
+
+        fillPath.setFillType(Path.FillType.EVEN_ODD);
+
+        fillPath.close();
+
+        canvas.drawPath(maxPath, paint);
+
         paint.setColor(getResources().getColor(R.color.pink));
+        paint.setStyle(Paint.Style.FILL);
         paint.setAlpha(100);
 
         canvas.drawPath(fillPath, paint);
@@ -255,6 +302,71 @@ public class SmoothLineChart extends View {
         for (PointF point : minPoints) {
             canvas.drawCircle(point.x, point.y, (circleSize - strokeSize) / 2, paint);
         }
+    }
+
+    /**
+     * Метод для получения списка точек из path
+     *
+     * @param path
+     * @return
+     */
+    private List<PointF> getPoints(Path path) {
+        ArrayList<PointF> pointArray = new ArrayList<>();
+        PathMeasure pm = new PathMeasure(path, false);
+        float length = pm.getLength();
+        float distance = 0f;
+        float speed = 1;
+        float[] aCoordinates = new float[2];
+
+        while ((distance < length)) {
+            // get point from the path
+            pm.getPosTan(distance, aCoordinates, null);
+            pointArray.add(new PointF(aCoordinates[0], aCoordinates[1]));
+            distance = distance + speed;
+        }
+
+        return pointArray;
+    }
+
+
+    /**
+     * Метод для отрисовки графика
+     *
+     * @param points
+     * @return
+     */
+    private Path drawLine(List<PointF> points) {
+
+        Path path = new Path();
+
+        float maxX = 0, maxY = 0;
+
+        //Устанавливаем path на первой точке
+        path.moveTo(points.get(0).x, points.get(0).y);
+
+        for (int i = 1; i < points.size(); i++) {
+            PointF p = points.get(i);    // current point
+
+            // first control point
+            PointF p0 = points.get(i - 1);    // previous point
+            float d0 = (float) Math.sqrt(Math.pow(p.x - p0.x, 2) + Math.pow(p.y - p0.y, 2));    // distance between p and p0
+            float x1 = Math.min(p0.x + maxX * d0, (p0.x + p.x) / 2);    // min is used to avoid going too much right
+            float y1 = p0.y + maxY * d0;
+
+            // second control point
+            PointF p1 = points.get(i + 1 < points.size() ? i + 1 : i);    // next point
+            float d1 = (float) Math.sqrt(Math.pow(p1.x - p0.x, 2) + Math.pow(p1.y - p0.y, 2));    // distance between p1 and p0 (length of reference line)
+            maxX = (p1.x - p0.x) / d1 * SMOOTHNESS;        // (lX,lY) is the slope of the reference line
+            maxY = (p1.y - p0.y) / d1 * SMOOTHNESS;
+            float x2 = Math.max(p.x - maxX * d0, (p0.x + p.x) / 2);    // max is used to avoid going too much left
+            float y2 = p.y - maxY * d0;
+
+            // add line
+            path.cubicTo(x1, y1, x2, y2, p.x, p.y);
+//            fillPath.cubicTo(x1, y1, x2, y2, p.x, p.y);
+        }
+
+        return path;
     }
 
     private void drawBackground(Canvas canvas) {
