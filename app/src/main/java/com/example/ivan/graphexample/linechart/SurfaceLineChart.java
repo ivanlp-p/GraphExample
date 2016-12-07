@@ -12,7 +12,8 @@ import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
-import android.view.View;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 
 import com.example.ivan.graphexample.R;
 
@@ -20,11 +21,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by I.Laukhin on 10.11.2016.
+ * Created by I.Laukhin on 04.12.2016.
  */
 
-public class SmoothLineChart extends View {
+public class SurfaceLineChart extends SurfaceView implements SurfaceHolder.Callback {
 
+    private Canvas canvas;
     private static final int CHART_COLOR = 0xFF0099CC;
     private static final int CIRCLE_SIZE = 8;
     private static final int STROKE_SIZE = 2;
@@ -61,18 +63,19 @@ public class SmoothLineChart extends View {
     private float minY = 0;
     private float maxXAxis;
     private float maxYAxis;
+    private DrawLineChartThread drawThread;
 
-
-    public SmoothLineChart(Context context) {
+    public SurfaceLineChart(Context context) {
         this(context, null, 0);
     }
 
-    public SmoothLineChart(Context context, AttributeSet attrs) {
+    public SurfaceLineChart(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
     }
 
-    public SmoothLineChart(Context context, AttributeSet attrs, int defStyle) {
-        super(context, attrs, defStyle);
+    public SurfaceLineChart(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        getHolder().addCallback(this);
 
         scale = context.getResources().getDisplayMetrics().density;
 
@@ -86,7 +89,39 @@ public class SmoothLineChart extends View {
 
         path = new Path();
         fillPath = new Path();
+        setWillNotDraw(false);
+    }
 
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+
+    }
+
+    @Override
+    public void surfaceCreated(SurfaceHolder surfaceHolder) {
+        canvas = getHolder().lockCanvas(null);
+
+        drawThread = new DrawLineChartThread(getHolder());
+        drawThread.setRunning(true);
+        drawThread.start();
+        drawBackground(canvas);
+        drawMinMaxLine(canvas);
+  /*      canvas.drawColor(Color.BLUE);
+        draw(canvas);
+        drawBackground(canvas);
+        drawMinMaxLine(canvas);
+
+        getHolder().unlockCanvasAndPost(canvas);*/
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
+
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
     }
 
     public void setCurvesForFillArea(PointF[] minValue, PointF[] maxValue) {
@@ -125,81 +160,6 @@ public class SmoothLineChart extends View {
         }
 
         invalidate();
-    }
-
-    public void draw(Canvas canvas) {
-        super.draw(canvas);
-
-
-        drawBackground(canvas);
-        drawMinMaxLine(canvas);
-
-        if (isLineDraw == true){
-            drawLinePath(canvas);
-        }
-
-
-    }
-
-    private void drawLinePath(Canvas canvas) {
-        final float height = getMeasuredHeight() - 2 * border
-                - getResources().getDimensionPixelSize(R.dimen.axisy_padding_0)
-                - getResources().getDimensionPixelSize(R.dimen.axisy_padding_15);
-        //   final float height = getMeasuredHeight() - 2 * border;
-
-        Log.d("happy", getMeasuredHeight() +" Linedata");
-        Log.d("happy", border +" Linedata");
-        Log.d("happy", getResources().getDimensionPixelSize(R.dimen.axisy_padding_0) +" Linedata");
-        Log.d("happy", getResources().getDimensionPixelSize(R.dimen.axisy_padding_15) +" Linedata");
-
-        final float width = getMeasuredWidth() - border
-                - getResources().getDimensionPixelSize(R.dimen.axisx_padding_5)
-                - getResources().getDimensionPixelSize(R.dimen.axisx_padding_10);
-        //   final float width = getMeasuredWidth() - 2 * border;
-
-        final float left = 0;
-        final float right = maxXAxis;
-        final float dX = (right - left) > 0 ? (right - left) : (2);
-        final float dY = (maxYAxis - minY) > 0 ? (maxYAxis - minY) : (2);
-
-        List<PointF> datalist = new ArrayList<PointF>(dataline.length);
-        for (PointF point : dataline) {
-            //float x = border + (point.x - left) * width / dX;
-            float x = (point.x - left) * width / dX;
-            //  float y = border + height - (point.y - minY) * height / dY;
-            float y = height - (point.y - minY) * height / dY;
-            datalist.add(new PointF(x, y));
-            Log.d("happy", "datalist x = " + x + " y = " + y);
-        }
-
-        linePath = new Path();
-        linePath.reset();
-        float minX = 0, minY = 0;
-        linePath.moveTo(datalist.get(0).x, datalist.get(0).y);
-        for (int i = 1; i < dataline.length; i++) {
-            PointF p = datalist.get(i);    // current point
-
-            // first control point
-            PointF p0 = datalist.get(i - 1);    // previous point
-            float d0 = (float) Math.sqrt(Math.pow(p.x - p0.x, 2) + Math.pow(p.y - p0.y, 2));    // distance between p and p0
-            float x1 = Math.min(p0.x + minX * d0, (p0.x + p.x) / 2);    // min is used to avoid going too much right
-            float y1 = p0.y + minY * d0;
-
-            // second control point
-            PointF p1 = datalist.get(i + 1 < datalist.size() ? i + 1 : i);    // next point
-            float d1 = (float) Math.sqrt(Math.pow(p1.x - p0.x, 2) + Math.pow(p1.y - p0.y, 2));    // distance between p1 and p0 (length of reference line)
-            minX = (p1.x - p0.x) / d1 * SMOOTHNESS;        // (lX,lY) is the slope of the reference line
-            minY = (p1.y - p0.y) / d1 * SMOOTHNESS;
-            float x2 = Math.max(p.x - minX * d0, (p0.x + p.x) / 2);    // max is used to avoid going too much left
-            float y2 = p.y - minY * d0;
-
-            // add line
-            linePath.cubicTo(x1, y1, x2, y2, p.x, p.y);
-        }
-        paint.setColor(Color.BLACK);
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(2);
-        canvas.drawPath(linePath, paint);
     }
 
     private void drawBackground(Canvas canvas) {
@@ -455,11 +415,32 @@ public class SmoothLineChart extends View {
         }
     }
 
-    public void setLineData(PointF[] dataline) {
-        this.dataline = dataline;
-        isLineDraw = true;
+    public int getMinLineColor() {
+        return minLineColor;
+    }
 
-        invalidate();
+    public void setMinLineColor(int minLineColor) {
+        this.minLineColor = minLineColor;
+    }
+
+    public int getMaxLineColor() {
+        return maxLineColor;
+    }
+
+    public void setMaxLineColor(int maxLineColor) {
+        this.maxLineColor = maxLineColor;
+    }
+
+    public float getMinMaxLineStrikeWidth() {
+        return minMaxLineStrikeWidth;
+    }
+
+    public void setMinMaxLineStrikeWidth(float minMaxLineStrikeWidth) {
+        this.minMaxLineStrikeWidth = minMaxLineStrikeWidth;
+    }
+
+    public Path getFillPath() {
+        return fillPath;
     }
 
     public int getFillColor() {
@@ -476,53 +457,5 @@ public class SmoothLineChart extends View {
 
     public void setFillAlpha(int fillAlpha) {
         this.fillAlpha = fillAlpha;
-    }
-
-    public int getMaxLineColor() {
-        return maxLineColor;
-    }
-
-    public void setMaxLineColor(int maxLineColor) {
-        this.maxLineColor = maxLineColor;
-    }
-
-    public int getMinLineColor() {
-        return minLineColor;
-    }
-
-    public void setMinLineColor(int minLineColor) {
-        this.minLineColor = minLineColor;
-    }
-
-    public float getMinMaxLineStrikeWidth() {
-        return minMaxLineStrikeWidth;
-    }
-
-    public void setMinMaxLineStrikeWidth(float minMaxLineStrikeWidth) {
-        this.minMaxLineStrikeWidth = minMaxLineStrikeWidth;
-    }
-
-    public float getMinY() {
-        return minY;
-    }
-
-    public void setMinY(float minY) {
-        this.minY = minY;
-    }
-
-    public float getMaxXAxis() {
-        return maxXAxis;
-    }
-
-    public void setMaxXAxis(float maxXAxis) {
-        this.maxXAxis = maxXAxis;
-    }
-
-    public float getMaxYAxis() {
-        return maxYAxis;
-    }
-
-    public void setMaxYAxis(float maxYAxis) {
-        this.maxYAxis = maxYAxis;
     }
 }

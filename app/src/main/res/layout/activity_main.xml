@@ -3,12 +3,19 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context=".MainActivity"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/pink">
 
-        <com.example.ivan.graphexample.linechart.SmoothLineChart
+        <com.example.ivan.graphexample.linechart.SurfaceLineChart
+            android:id="@+id/surfaceLineChart"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:background="@android:color/white"/>
+
+       <!-- <com.example.ivan.graphexample.linechart.SmoothLineChart
             android:id="@+id/smoothChart"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@android:color/white" />
+            android:background="@android:color/white" />-->
 
 </FrameLayout>
